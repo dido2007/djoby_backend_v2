@@ -1,10 +1,12 @@
 require('dotenv').config();
 const express = require('express');
-const session = require('express-session');
 const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
+const session = require ('express-session');
+const MongoStore = require('connect-mongo');
+const { collection } = require('./models/Users');
 
 // Express app initialization
 const app = express();
@@ -18,6 +20,19 @@ app.use(cookieParser());
 app.use(bodyParser.json());
 app.use(express.static('public'));
 app.use(bodyParser.urlencoded({ extended: true }));
+app.use(session({
+  secret:'DJOBYhEdIfOuRaTi2023',
+  resave: false,
+  saveUninitialized :false,
+  store: MongoStore.create({ 
+    mongoUrl: process.env.MONGO,
+    collection : 'session-db'
+  }),
+
+  cookie: {
+    maxAge: 1000 * 60 * 60 * 24
+  }
+  }));
 
 // DATABASE CONNECTION
 mongoose.connect(process.env.MONGO, {

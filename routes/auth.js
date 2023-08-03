@@ -1,11 +1,25 @@
-require('dotenv').config();
-const express = require('express');
-const router = express.Router();
-const bcrypt = require('bcrypt');
-const { ObjectId } = require('mongoose').Types;
-const crypto = require("crypto");
-const twilio = require('twilio');
-const VerificationCodePost = require('../models/VerificationCodePost');
+  require('dotenv').config();
+  const express = require('express');
+  const router = express.Router();
+  const { ObjectId } = require('mongoose').Types;
+  const crypto = require("crypto");
+  const twilio = require('twilio');
+  const multer = require('multer'); 
+  const MongoStore = require ('connect-mongo')
+  const VerificationCodePost = require('../models/VerificationCodePost');
+  const User = require('../models/Users')
+
+  const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+      cb(null, './uploads');
+    },
+    filename: function (req, file, cb) {
+      cb(null, Date.now() + '-' + file.originalname)
+    }
+  });
+ 
+  const upload = multer({ storage: storage });
+
 
 
 module.exports = (db) => {  
@@ -110,5 +124,41 @@ module.exports = (db) => {
   })
 
 
+router.post('/fillUser', upload.fields([{ name: 'avatar', maxCount: 1 }, { name: 'projectImages', maxCount: 8 }]), (req, res) => {
+  const user = new User({
+    phoneNumber: req.body.phoneNumber,
+    fullName: req.body.fullName,
+    age: req.body.age,
+    avatar: req.files.avatar ? req.files.avatar[0].path : null, // we save the path to the image
+    userType: req.body.userType,
+    interestedServices: JSON.parse(req.body.interestedServices),
+    skills: req.body.skills,
+    projectImages: req.files.projectImages ? req.files.projectImages.map(file => file.path) : [], // we save paths to images
+  });
+
+  user.save()
+    .then(data => {
+      res.send(data);
+    })
+    .catch(err => {
+      res.status(500).send({
+        message: err.message || 'Some error occurred while creating the user.'
+      });
+    });
+
+    req.session.user = {
+      phoneNumber: user.phoneNumber,
+      fullName: user.fullName,
+      age: user.age,
+      avatar: user.avatar,
+      userType: user.userType,
+      interestedServices: user.interestedServices,
+      skills: user.skills,
+      projectImages: user.projectImages,
+    };
+});
+
+
   return router;
 };
+
